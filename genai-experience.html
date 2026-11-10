@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Generative AI - The Machine That Dreams</title>
+<style>
+:root{--bg:#0a0618;--pink:#ff2d95;--cyan:#00e5ff;--lime:#b6ff00;--amber:#ffb800;--purple:#8a5cff;--ink:#f4f0ff}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(60% 60% at 20% 20%,#3a0f6b66,transparent),radial-gradient(50% 50% at 85% 80%,#ff2d9533,transparent),var(--bg)}
+.blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.35;z-index:0;animation:float 14s ease-in-out infinite alternate}
+.b1{width:40vmax;height:40vmax;background:var(--purple);left:-10vmax;top:-10vmax}
+.b2{width:35vmax;height:35vmax;background:var(--pink);right:-10vmax;bottom:-8vmax;animation-delay:-5s}
+.b3{width:25vmax;height:25vmax;background:var(--cyan);left:40%;top:30%;opacity:.18;animation-delay:-9s}
+@keyframes float{to{transform:translate(6vmax,4vmax) scale(1.15)}}
+canvas#mist,canvas#conf{position:fixed;inset:0;z-index:1;pointer-events:none}
+canvas#conf{z-index:20}
+
+/* progress bar */
+#top{position:fixed;top:0;left:0;right:0;z-index:10;padding:14px 24px;display:flex;gap:16px;align-items:center;background:linear-gradient(#0a0618f2,#0a061800)}
+#plabel{font-weight:800;letter-spacing:.1em;font-size:12px;white-space:nowrap;color:var(--cyan);min-width:190px;text-shadow:0 0 10px var(--cyan)}
+#bar{flex:1;height:18px;border-radius:99px;background:#ffffff14;position:relative;overflow:hidden;border:1px solid #ffffff2a}
+#fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--pink),var(--amber),var(--lime),var(--cyan),var(--pink));background-size:300% 100%;animation:shine 3s linear infinite;box-shadow:0 0 18px var(--pink);transition:width .7s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes shine{to{background-position:-300% 0}}
+#ticks{position:absolute;inset:0;display:flex}
+#ticks i{flex:1;border-right:1px solid #0a061877}
+#pct{font-weight:900;font-size:18px;min-width:56px;text-align:right}
+
+/* slides */
+main{position:fixed;inset:60px 0 66px;z-index:2}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6vw;opacity:0;pointer-events:none;transform:translateY(34px) scale(.98);transition:opacity .55s,transform .55s;overflow-y:auto;text-align:center}
+.slide.on{opacity:1;pointer-events:auto;transform:none}
+h1{font-size:clamp(38px,8vw,104px);font-weight:900;line-height:1;letter-spacing:-.02em;background:linear-gradient(90deg,var(--pink),var(--amber),var(--lime),var(--cyan),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;animation:shine 6s linear infinite}
+h2{font-size:clamp(24px,3.6vw,46px);font-weight:900;margin-bottom:10px}
+h2 em{font-style:normal;color:var(--lime);text-shadow:0 0 18px var(--lime)}
+.sub{font-size:clamp(15px,1.7vw,21px);opacity:.85;max-width:760px;margin:8px auto 18px;line-height:1.45}
+.tag{display:inline-block;padding:6px 14px;border-radius:99px;border:1px solid var(--cyan);color:var(--cyan);font-size:12px;font-weight:800;letter-spacing:.15em;margin-bottom:16px}
+.card{background:#ffffff0d;border:1px solid #ffffff26;border-radius:22px;padding:18px 22px;backdrop-filter:blur(8px)}
+.row{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:center;width:100%}
+.btn{cursor:pointer;border:0;border-radius:99px;padding:11px 22px;font-weight:800;font-size:15px;color:#0a0618;background:linear-gradient(90deg,var(--cyan),var(--lime));transition:transform .15s,box-shadow .2s;font-family:inherit}
+.btn:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 8px 28px #00e5ff66}
+.btn.big{font-size:20px;padding:16px 34px;background:linear-gradient(90deg,var(--pink),var(--amber));box-shadow:0 0 30px #ff2d9566}
+.btn.ghost{background:#ffffff14;color:var(--ink);border:1px solid #ffffff33}
+.chip{cursor:pointer;border:1px solid #ffffff33;background:#ffffff0f;color:var(--ink);border-radius:99px;padding:9px 16px;font-weight:700;font-family:inherit;font-size:15px;transition:.2s}
+.chip:hover{border-color:var(--cyan);transform:translateY(-2px)}
+.chip.sel{background:linear-gradient(90deg,var(--pink),var(--purple));border-color:transparent;box-shadow:0 0 18px #ff2d9577}
+.glitch{position:relative}
+.glitch::before,.glitch::after{content:attr(data-t);position:absolute;left:0;right:0;top:0;background:inherit;-webkit-background-clip:text;background-clip:text;color:transparent;opacity:.8}
+.glitch::before{transform:translate(3px,-2px);filter:hue-rotate(90deg);clip-path:inset(0 0 55% 0);animation:gl 3s infinite steps(1)}
+.glitch::after{transform:translate(-3px,2px);filter:hue-rotate(200deg);clip-path:inset(55% 0 0 0);animation:gl 2.4s infinite steps(1) reverse}
+@keyframes gl{0%,90%{transform:translate(0)}92%{transform:translate(6px,-3px)}95%{transform:translate(-6px,3px)}}
+
+/* footer */
+#nav{position:fixed;bottom:0;left:0;right:0;z-index:10;height:66px;display:flex;align-items:center;justify-content:center;gap:16px;background:linear-gradient(#0a061800,#0a0618f2)}
+#dots{display:flex;gap:7px}
+#dots b{width:10px;height:10px;border-radius:50%;background:#ffffff2a;cursor:pointer;transition:.3s}
+#dots b.v{background:var(--purple)}
+#dots b.c{background:var(--lime);transform:scale(1.5);box-shadow:0 0 12px var(--lime)}
+
+/* slide 2: what is it */
+.vs{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.vs .card{width:min(340px,86vw);animation:pop 3s ease-in-out infinite alternate}
+.vs .card:nth-child(2){animation-delay:-1.5s}
+@keyframes pop{to{transform:translateY(-8px)}}
+.big-e{font-size:62px;margin:6px 0}
+
+/* dial */
+#dialwrap{width:min(340px,80vw)}
+#dial{width:100%;touch-action:none;cursor:grab;user-select:none}
+#eraT{font-size:clamp(20px,2.6vw,32px);font-weight:900;margin:4px 0}
+#eraD{max-width:430px;line-height:1.5;opacity:.9;min-height:96px}
+.hint{font-size:13px;opacity:.6;margin-top:6px}
+
+/* feed */
+#mon{font-size:110px;transition:transform .4s cubic-bezier(.3,1.8,.5,1);display:inline-block}
+.meter{width:min(420px,80vw);height:16px;border-radius:99px;background:#ffffff18;overflow:hidden;margin:10px auto}
+.meter>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--lime),var(--cyan));transition:width .4s}
+
+/* next word */
+.opt{display:block;position:relative;overflow:hidden;width:min(420px,84vw);margin:8px auto;text-align:left;cursor:pointer;border:1px solid #ffffff33;border-radius:14px;background:#ffffff0d;color:var(--ink);padding:11px 16px;font-weight:800;font-family:inherit;font-size:16px}
+.opt i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#ff2d9588,#8a5cff55);z-index:0;transition:width .6s}
+.opt span{position:relative;z-index:1}
+.opt b{position:relative;z-index:1;float:right;opacity:.8}
+.opt:hover{border-color:var(--lime)}
+#story{font-size:clamp(20px,2.6vw,32px);font-weight:900;min-height:84px;max-width:760px;line-height:1.35}
+#story u{text-decoration:none;color:var(--lime)}
+
+/* tokens */
+#tin{width:min(640px,88vw);padding:14px 18px;border-radius:16px;border:2px solid var(--purple);background:#0a0618aa;color:var(--ink);font-size:20px;font-family:inherit;outline:none}
+#tin:focus{border-color:var(--cyan);box-shadow:0 0 20px #00e5ff55}
+#tout{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:760px;margin:16px 0}
+#tout span{padding:6px 11px;border-radius:9px;font-weight:800;font-size:18px;animation:in .3s}
+@keyframes in{from{transform:scale(.4);opacity:0}}
+
+/* attention */
+#sent{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 8px;max-width:820px;margin:18px 0;font-size:clamp(20px,2.6vw,32px);font-weight:800}
+.w{display:flex;flex-direction:column;align-items:center;padding:4px 8px;border-radius:10px;transition:.4s;min-width:30px}
+.w small{font-size:12px;height:16px;color:var(--lime);font-weight:900}
+.w.me{background:#ff2d9566;box-shadow:0 0 22px #ff2d95}
+.w.hot{background:#b6ff0033;box-shadow:0 0 20px #b6ff00aa}
+
+/* temperature */
+#tp{width:min(460px,82vw);accent-color:var(--pink)}
+#tpout{font-size:clamp(20px,2.5vw,30px);font-weight:800;max-width:720px;min-height:96px;line-height:1.35;transition:color .3s}
+
+/* diffusion */
+#cv{width:min(560px,86vw);border-radius:18px;border:2px solid #ffffff33;box-shadow:0 0 40px #8a5cff66;image-rendering:auto}
+
+/* prompt lab */
+#res{width:min(380px,84vw);height:230px;border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:90px;position:relative;overflow:hidden;transition:.5s;border:2px solid #ffffff33}
+#res .ex{position:absolute;font-size:30px;animation:fl 3s ease-in-out infinite alternate}
+@keyframes fl{to{transform:translateY(-12px) rotate(10deg)}}
+#pr{font-weight:800;font-size:18px;color:var(--cyan);margin:12px 0;min-height:28px}
+
+/* hallucination */
+.claim{display:block;width:min(640px,88vw);margin:8px auto;text-align:left;border:1px solid #ffffff33;background:#ffffff0d;color:var(--ink);border-radius:14px;padding:12px 16px;font-size:17px;font-family:inherit;font-weight:700;cursor:pointer;transition:.25s}
+.claim:hover{border-color:var(--amber);transform:translateX(5px)}
+.claim.ok{background:#b6ff0022;border-color:var(--lime)}
+.claim.bad{background:#ff2d9533;border-color:var(--pink);animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+#hmsg{min-height:60px;max-width:640px;font-weight:700;margin-top:10px}
+
+/* sort */
+#sc{width:min(540px,86vw);min-height:120px;display:flex;align-items:center;justify-content:center;font-size:clamp(20px,2.6vw,30px);font-weight:900;margin-bottom:14px}
+.bars{display:flex;gap:14px;align-items:flex-end;height:240px;margin:14px 0}
+.bars div{width:54px;border-radius:12px 12px 4px 4px;transition:height .5s;display:flex;align-items:flex-start;justify-content:center;font-weight:900;padding-top:6px}
+
+/* future cards */
+.fc{width:200px;height:210px;perspective:900px;cursor:pointer}
+.fc div{position:absolute;inset:0;border-radius:20px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;backface-visibility:hidden;transition:transform .6s;border:1px solid #ffffff33;font-weight:700;font-size:14px;line-height:1.4}
+.fc{position:relative}
+.fc .f{background:linear-gradient(160deg,#8a5cff55,#ff2d9544);font-size:18px;font-weight:900}
+.fc .f b{font-size:52px}
+.fc .k{background:linear-gradient(160deg,#00e5ff33,#b6ff0033);transform:rotateY(180deg)}
+.fc.flip .f{transform:rotateY(180deg)}
+.fc.flip .k{transform:rotateY(0)}
+.badges{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:720px;margin:14px 0 20px}
+.badges span{padding:8px 14px;border-radius:99px;background:#ffffff14;border:1px solid #ffffff33;font-weight:800;animation:pop 2s ease-in-out infinite alternate}
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+<canvas id="mist"></canvas><canvas id="conf"></canvas>
+
+<div id="top">
+  <div id="plabel">BOOTING NEURONS</div>
+  <div id="bar"><div id="fill"></div><div id="ticks"></div></div>
+  <div id="pct">0%</div>
+</div>
+
+<main>
+<!-- 1 -->
+<section class="slide">
+  <div class="tag">A TOUCHABLE EXPERIENCE</div>
+  <h1 class="glitch" data-t="GENERATIVE AI">GENERATIVE AI</h1>
+  <h2 style="margin-top:14px">The machine that dreams ✨</h2>
+  <p class="sub">15 stops. Zero boring slides. Poke, drag and click everything.</p>
+  <button class="btn big" onclick="go(1)">Boot it up →</button>
+</section>
+<!-- 2 -->
+<section class="slide">
+  <div class="tag">STOP 1 · THE BIG IDEA</div>
+  <h2>Old AI <em>sorts</em>. New AI <em>creates</em>.</h2>
+  <div class="vs">
+    <div class="card"><div class="big-e">🐱❓</div><b>Classic AI</b><p class="sub" style="margin:6px 0 0">"Is this a cat?"<br>Answer: <b>YES</b>. It only labels what already exists.</p></div>
+    <div class="card"><div class="big-e">🐱🚀✨</div><b>Generative AI</b><p class="sub" style="margin:6px 0 0">"Draw a cat in a spacesuit."<br>Answer: a <b>brand-new</b> picture nobody ever made.</p></div>
+  </div>
+  <p class="sub">Generative AI doesn't copy and paste. It learns patterns, then produces new text, images, sound and code from them.</p>
+</section>
+<!-- 3 -->
+<section class="slide">
+  <div class="tag">STOP 2 · TIME TRAVEL</div>
+  <h2>Turn the dial. <em>Wake the mist.</em></h2>
+  <div class="row">
+    <div id="dialwrap"><svg id="dial" viewBox="0 0 340 340"></svg><div class="hint">drag the knob around the clock</div></div>
+    <div class="card" style="max-width:470px"><div id="eraT"></div><div id="eraD"></div></div>
+  </div>
+</section>
+<!-- 4 -->
+<section class="slide">
+  <div class="tag">STOP 3 · HOW IT LEARNS</div>
+  <h2>Feed the <em>beast</em></h2>
+  <div id="mon">🤖</div>
+  <div class="meter"><i id="mf"></i></div>
+  <p class="sub" id="mm" style="min-height:52px">It starts out knowing nothing. Feed it some data!</p>
+  <div class="row" id="fd"></div>
+</section>
+<!-- 5 -->
+<section class="slide">
+  <div class="tag">STOP 4 · THE SECRET TRICK</div>
+  <h2>It just <em>guesses the next word</em></h2>
+  <div id="story"></div>
+  <div id="opts"></div>
+  <p class="hint">odds are illustrative, real models weigh thousands of options</p>
+</section>
+<!-- 6 -->
+<section class="slide">
+  <div class="tag">STOP 5 · TOKENS</div>
+  <h2>AI doesn't read words. It reads <em>chunks</em>.</h2>
+  <input id="tin" value="Unbelievably creative machines!" autocomplete="off">
+  <div id="tout"></div>
+  <p class="sub" id="tcnt"></p>
+  <p class="hint">a simplified splitter for the demo, real tokenizers differ</p>
+</section>
+<!-- 7 -->
+<section class="slide">
+  <div class="tag">STOP 6 · ATTENTION</div>
+  <h2>How does it know what <em>"it"</em> means?</h2>
+  <div class="row"><button class="chip sel" id="a1" onclick="att(0)">…because it was too big</button><button class="chip" id="a2" onclick="att(1)">…because it was too small</button></div>
+  <div id="sent"></div>
+  <p class="sub">Transformers use <b>attention</b> to weigh which words matter to each other. Change one word and the whole meaning flips.</p>
+</section>
+<!-- 8 -->
+<section class="slide">
+  <div class="tag">STOP 7 · THE CREATIVITY KNOB</div>
+  <h2>Temperature: <em>boring → wild</em></h2>
+  <p class="sub" style="margin-bottom:6px">Prompt: "Describe a cat."</p>
+  <div id="tpout"></div>
+  <input type="range" id="tp" min="0" max="100" value="10">
+  <p class="hint">low = safe and predictable · high = risky and weird</p>
+</section>
+<!-- 9 -->
+<section class="slide">
+  <div class="tag">STOP 8 · HOW IMAGES ARE BORN</div>
+  <h2>From <em>static noise</em> to a picture</h2>
+  <canvas id="cv" width="480" height="300"></canvas>
+  <div class="row" style="margin-top:12px"><input type="range" id="nz" min="0" max="100" value="100" style="width:min(340px,70vw);accent-color:var(--cyan)"><button class="btn" onclick="playDenoise()">▶ Generate</button></div>
+  <p class="hint">diffusion models start with pure noise and remove a little each step</p>
+</section>
+<!-- 10 -->
+<section class="slide">
+  <div class="tag">STOP 9 · PROMPT LAB</div>
+  <h2>Your words are the <em>steering wheel</em></h2>
+  <div id="res"></div>
+  <div id="pr"></div>
+  <div class="row" id="pl" style="gap:8px;max-width:760px"></div>
+  <p class="hint">a mock generator for fun, real ones run diffusion models</p>
+</section>
+<!-- 11 -->
+<section class="slide">
+  <div class="tag">STOP 10 · HALLUCINATIONS</div>
+  <h2>Find the <em>confident lie</em></h2>
+  <p class="sub" style="margin-bottom:6px">An AI answered "Tell me about the Great Pyramid of Giza". One sentence is made up. Which?</p>
+  <div id="cl"></div>
+  <div id="hmsg"></div>
+</section>
+<!-- 12 -->
+<section class="slide">
+  <div class="tag">STOP 11 · SUPERPOWERS &amp; KRYPTONITE</div>
+  <h2>Does AI <em>nail it</em> or <em>struggle</em>?</h2>
+  <div class="card" id="sc"></div>
+  <div class="row"><button class="btn" onclick="sortA(true)">💪 Nails it</button><button class="btn ghost" onclick="sortA(false)">😵 Struggles</button></div>
+  <p class="sub" id="sm" style="margin-top:14px;min-height:60px"></p>
+</section>
+<!-- 13 -->
+<section class="slide">
+  <div class="tag">STOP 12 · GARBAGE IN, GARBAGE OUT</div>
+  <h2>AI is a <em>mirror</em> of its data</h2>
+  <div class="bars" id="bars"></div>
+  <input type="range" id="bv" min="0" max="100" value="5" style="width:min(380px,80vw);accent-color:var(--lime)">
+  <p class="sub" id="bm" style="margin-top:12px"></p>
+  <p class="hint">drag to widen the variety of the training data</p>
+</section>
+<!-- 14 -->
+<section class="slide">
+  <div class="tag">STOP 13 · WHAT'S NEXT</div>
+  <h2>Pick a card, peek at the <em>future</em></h2>
+  <div class="row" id="fu"></div>
+</section>
+<!-- 15 -->
+<section class="slide">
+  <div class="tag">FINAL STOP · LEVEL UP</div>
+  <h1>YOU GOT IT 🎉</h1>
+  <div class="badges"><span>🧠 Learns patterns</span><span>🔤 Predicts next tokens</span><span>👀 Uses attention</span><span>🌡️ Has a creativity knob</span><span>🖼️ Denoises images</span><span>🤥 Can hallucinate</span><span>🪞 Mirrors its data</span></div>
+  <p class="sub">Generative AI is a powerful creative partner. It still needs a human who checks the facts.</p>
+  <button class="btn big" onclick="go(0)">↺ Play again</button>
+</section>
+</main>
+
+<div id="nav">
+  <button class="btn ghost" onclick="go(cur-1)">← Back</button>
+  <div id="dots"></div>
+  <button class="btn" onclick="go(cur+1)">Next →</button>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const S=[...document.querySelectorAll('.slide')];
+let cur=0,maxS=0;
+
+/* ---------- progress bar + nav ---------- */
+const N=S.length;
+for(let i=0;i<N;i++){$('ticks').appendChild(document.createElement('i'));const d=document.createElement('b');d.onclick=()=>go(i);$('dots').appendChild(d)}
+const LABELS=[[0,'BOOTING NEURONS'],[15,'LOADING DATA'],[35,'TRAINING MODEL'],[55,'FINE-TUNING'],[75,'ALMOST GENERATED'],[100,'FULLY GENERATED ✨']];
+function updBar(){
+  const p=Math.round(maxS/(N-1)*100);
+  $('fill').style.width=Math.max(p,4)+'%';$('pct').textContent=p+'%';
+  let l=LABELS[0][1];LABELS.forEach(x=>{if(p>=x[0])l=x[1]});$('plabel').textContent=l;
+  [...$('dots').children].forEach((d,i)=>{d.className=i===cur?'c':(i<=maxS?'v':'')});
+}
+function go(n){
+  n=Math.max(0,Math.min(N-1,n));cur=n;maxS=Math.max(maxS,n);
+  S.forEach((s,i)=>s.classList.toggle('on',i===n));
+  updBar();
+  mistTarget=(n===2)?dialMist():0;
+  if(n===14)confetti();
+  if(n===0){maxS=0;updBar()}
+}
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'&&e.target.type==='text')return;if(e.key==='ArrowRight'||e.key===' ')go(cur+1);if(e.key==='ArrowLeft')go(cur-1)});
+
+/* ---------- mist (rises from the bottom) ---------- */
+const mc=$('mist'),mx=mc.getContext('2d');let W,H;
+function rs(){W=mc.width=innerWidth;H=mc.height=innerHeight;cf.width=W;cf.height=H}
+const cf=$('conf'),cx=cf.getContext('2d');
+rs();addEventListener('resize',rs);
+let mist=0,mistTarget=0,mistHue=200,puffs=[];
+function tickMist(){
+  mist+=(mistTarget-mist)*.05;
+  mx.clearRect(0,0,W,H);
+  const n=mist*3,c=Math.floor(n)+(Math.random()<n%1?1:0);
+  for(let i=0;i<c;i++)puffs.push({x:Math.random()*W,y:H+80,r:70+Math.random()*150,vy:.7+Math.random()*1.6*(.4+mist),life:0,hue:mistHue+Math.random()*50-25,sw:Math.random()*100});
+  mx.globalCompositeOperation='lighter';
+  puffs=puffs.filter(p=>{
+    p.y-=p.vy;p.x+=Math.sin((p.life+p.sw)/45)*.7;p.life++;
+    const t=Math.min(1,p.life/((H+160)/p.vy));
+    const a=Math.sin(t*Math.PI)*.2*(.35+mist);
+    const g=mx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+    g.addColorStop(0,`hsla(${p.hue},100%,62%,${a})`);g.addColorStop(1,`hsla(${p.hue},100%,62%,0)`);
+    mx.fillStyle=g;mx.beginPath();mx.arc(p.x,p.y,p.r,0,7);mx.fill();
+    return t<1;
+  });
+  requestAnimationFrame(tickMist);
+}
+tickMist();
+
+/* ---------- clock dial ---------- */
+const ERAS=[
+ {y:'1950',t:'Turing asks: can machines think?',d:'Alan Turing proposes the "imitation game": judge a machine by whether you can tell it apart from a human.'},
+ {y:'1966',t:'ELIZA, the chatbot therapist',d:'A simple program that rephrased what you typed. People still poured their hearts out to it.'},
+ {y:'2014',t:'GANs: AIs that duel',d:'Two networks compete, a forger and a detective, until the forger gets scarily good at faces and images.'},
+ {y:'2017',t:'Transformers arrive',d:'Researchers publish "Attention Is All You Need". The design behind today\'s chatbots is born.'},
+ {y:'2020',t:'GPT-3 shocks everyone',d:'175 billion parameters. It writes essays, code and poems from just a few examples.'},
+ {y:'2022',t:'The big bang moment',d:'Image generators like Stable Diffusion and chatbots like ChatGPT reach millions of people within months.'},
+ {y:'NOW',t:'Multimodal &amp; agents',d:'Models that see, hear, talk and use tools. The story is still being written, and you are part of it.'}];
+const D=$('dial'),CX=170,CY=170,R=128;let ang=-135;
+const pt=(r,a)=>{const q=a*Math.PI/180;return[CX+r*Math.sin(q),CY-r*Math.cos(q)]};
+const arc=(a0,a1,r)=>{const[x0,y0]=pt(r,a0),[x1,y1]=pt(r,a1);return`M${x0} ${y0}A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1} ${y1}`};
+function dialMist(){const t=(ang+135)/270;mistHue=200+t*120;return .25+t*.85}
+function drawDial(){
+  const t=(ang+135)/270,idx=Math.round(t*6),e=ERAS[idx];
+  let h=`<defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#00e5ff"/><stop offset=".5" stop-color="#b6ff00"/><stop offset="1" stop-color="#ff2d95"/></linearGradient><filter id="gl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+  h+=`<circle cx="170" cy="170" r="162" fill="#ffffff08" stroke="#ffffff2a" stroke-width="2"/>`;
+  h+=`<path d="${arc(-135,135,R)}" stroke="#ffffff18" stroke-width="18" fill="none" stroke-linecap="round"/>`;
+  if(ang>-134)h+=`<path d="${arc(-135,ang,R)}" stroke="url(#g)" stroke-width="18" fill="none" stroke-linecap="round" filter="url(#gl)"/>`;
+  ERAS.forEach((x,i)=>{const a=-135+i*45,[x1,y1]=pt(R-16,a),[x2,y2]=pt(R-28,a),[tx,ty]=pt(R-44,a);
+    h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${i<=idx?'#b6ff00':'#ffffff55'}" stroke-width="3" stroke-linecap="round"/><text x="${tx}" y="${ty+4}" fill="${i===idx?'#b6ff00':'#ffffff88'}" font-size="11" font-weight="800" text-anchor="middle">${x.y}</text>`});
+  const[hx,hy]=pt(R-30,ang),[kx,ky]=pt(R,ang);
+  h+=`<line x1="170" y1="170" x2="${hx}" y2="${hy}" stroke="#ff2d95" stroke-width="5" stroke-linecap="round" filter="url(#gl)"/>`;
+  h+=`<circle cx="${kx}" cy="${ky}" r="16" fill="#fff" stroke="#ff2d95" stroke-width="5" filter="url(#gl)"/>`;
+  h+=`<circle cx="170" cy="170" r="34" fill="#0a0618" stroke="#ff2d95" stroke-width="3"/><text x="170" y="177" fill="#fff" font-size="20" font-weight="900" text-anchor="middle">${e.y}</text>`;
+  D.innerHTML=h;
+  $('eraT').innerHTML=e.t;$('eraD').textContent=e.d;
+  if(cur===2)mistTarget=dialMist();
+}
+function dragDial(ev){
+  const r=D.getBoundingClientRect(),s=340/r.width;
+  const dx=(ev.clientX-r.left)*s-CX,dy=(ev.clientY-r.top)*s-CY;
+  let a=Math.atan2(dx,-dy)*180/Math.PI;ang=Math.max(-135,Math.min(135,a));drawDial();
+}
+let dragging=false;
+D.addEventListener('pointerdown',e=>{dragging=true;D.setPointerCapture(e.pointerId);dragDial(e)});
+D.addEventListener('pointermove',e=>{if(dragging)dragDial(e)});
+D.addEventListener('pointerup',()=>dragging=false);
+drawDial();
+
+/* ---------- feed the beast ---------- */
+const FEEDS=[['📚','Books'],['💬','Chats'],['🖼️','Images'],['💻','Code']];
+const FM=['It starts out knowing nothing. Feed it some data!','Nom nom. It is spotting patterns in the words.','Every guess it makes is checked, and it gets nudged to be less wrong.','It is learning grammar, facts, jokes and styles.','It never memorizes pages. It learns the patterns behind them.','Billions of tiny adjustments later...','Now it can write, summarize and answer.','Fully trained! Real models eat trillions of words.'];
+let fed=0;
+FEEDS.forEach(f=>{const b=document.createElement('button');b.className='chip';b.textContent=f[0]+' '+f[1];b.onclick=()=>{fed=Math.min(7,fed+1);$('mon').style.transform=`scale(${1+fed*.12}) rotate(${fed%2?8:-8}deg)`;$('mon').textContent=['🤖','🤖','😋','🧠','🧠','🤩','🚀','🌟'][fed];$('mf').style.width=fed/7*100+'%';$('mm').textContent=FM[fed]};$('fd').appendChild(b)});
+
+/* ---------- next word ---------- */
+const STEPS=[{p:'The cat sat on the',o:[['mat',42],['floor',22],['sofa',16],['moon',3]]},{p:'and then it decided to',o:[['nap',38],['jump',24],['run',18],['write a poem',2]]},{p:'because deep down, every cat is a',o:[['tiny tiger',31],['fluffy king',26],['genius',20],['spaceship',1]]}];
+let si=0,story='';
+function renderStep(){
+  const st=STEPS[si];$('opts').innerHTML='';
+  if(!st){$('story').innerHTML=story+'<br><span style="font-size:.6em;opacity:.85">That is all an LLM does: one word at a time, billions of times.</span>';const b=document.createElement('button');b.className='btn';b.textContent='↺ Again';b.onclick=()=>{si=0;story='';renderStep()};$('opts').appendChild(b);return}
+  $('story').innerHTML=story+st.p+' <u>___</u>';
+  st.o.forEach(o=>{const b=document.createElement('button');b.className='opt';b.innerHTML=`<i style="width:${o[1]*2}%"></i><span>${o[0]}</span><b>${o[1]}%</b>`;b.onclick=()=>{story+=st.p+' <u>'+o[0]+'</u>, ';si++;renderStep()};$('opts').appendChild(b)});
+}
+renderStep();
+
+/* ---------- tokens ---------- */
+function tok(s){const parts=s.match(/\w+|[^\w\s]/g)||[],out=[];parts.forEach(w=>{if(w.length>6){for(let i=0;i<w.length;i+=4)out.push(w.slice(i,i+4))}else out.push(w)});return out}
+function drawTok(){const s=$('tin').value,t=tok(s);$('tout').innerHTML=t.map((x,i)=>`<span style="background:hsl(${i*47%360} 90% 45%)">${x.replace(/</g,'&lt;')}</span>`).join('');$('tcnt').textContent=`${s.length} characters → ${t.length} tokens`}
+$('tin').addEventListener('input',drawTok);drawTok();
+
+/* ---------- attention ---------- */
+const WORDS=['The','trophy',"didn't",'fit','in','the','suitcase','because','it','was','too','X','.'];
+let mode=0;
+function att(m){mode=m;$('a1').classList.toggle('sel',m===0);$('a2').classList.toggle('sel',m===1);
+  const w=WORDS.slice();w[11]=m?'small':'big';
+  $('sent').innerHTML=w.map((x,i)=>{
+    let cl='w',sm='';
+    if(i===8)cl+=' me';
+    if(i===1){sm=m?'15%':'82%';if(!m)cl+=' hot'}
+    if(i===6){sm=m?'82%':'15%';if(m)cl+=' hot'}
+    return`<div class="${cl}"><small>${sm}</small>${x}</div>`}).join('');
+}
+att(0);
+
+/* ---------- temperature ---------- */
+const TT=['A cat is a small furry animal that people keep as a pet.','A cat is a velvet-footed roommate who quietly runs the whole house.','A cat is a purring thundercloud with strong opinions about gravity.','Cat! Neon spaghetti jazz moon whisker-banana, meow in purple triangles!'];
+const TC=['#9ad','#00e5ff','#ffb800','#ff2d95'];
+function drawTemp(){const v=+$('tp').value,i=v<25?0:v<50?1:v<75?2:3;$('tpout').textContent=TT[i];$('tpout').style.color=TC[i]}
+$('tp').addEventListener('input',drawTemp);drawTemp();
+
+/* ---------- diffusion ---------- */
+const cv=$('cv'),ctx=cv.getContext('2d');
+(function scene(){
+  const g=ctx.createLinearGradient(0,0,0,300);g.addColorStop(0,'#1b0b4d');g.addColorStop(.5,'#ff2d95');g.addColorStop(1,'#ffb800');
+  ctx.fillStyle=g;ctx.fillRect(0,0,480,300);
+  ctx.fillStyle='#ffe27a';ctx.beginPath();ctx.arc(240,170,62,0,7);ctx.fill();
+  ctx.fillStyle='#2a0e5e';ctx.beginPath();ctx.moveTo(0,300);ctx.lineTo(0,200);ctx.lineTo(110,120);ctx.lineTo(230,215);ctx.lineTo(350,110);ctx.lineTo(480,205);ctx.lineTo(480,300);ctx.fill();
+  ctx.fillStyle='#0a0618';ctx.fillRect(0,250,480,50);
+  ctx.fillStyle='#00e5ff88';for(let i=0;i<9;i++)ctx.fillRect(130+i*26,258+(i%3)*10,18,3);
+})();
+const base=ctx.getImageData(0,0,480,300),noise=new Uint8Array(480*300*3);
+for(let i=0;i<noise.length;i++)noise[i]=Math.random()*255;
+const outImg=ctx.createImageData(480,300);
+function drawNoise(v){const a=v/100;for(let i=0,j=0;i<outImg.data.length;i+=4,j+=3){outImg.data[i]=base.data[i]*(1-a)+noise[j]*a;outImg.data[i+1]=base.data[i+1]*(1-a)+noise[j+1]*a;outImg.data[i+2]=base.data[i+2]*(1-a)+noise[j+2]*a;outImg.data[i+3]=255}ctx.putImageData(outImg,0,0)}
+$('nz').addEventListener('input',()=>drawNoise(+$('nz').value));drawNoise(100);
+function playDenoise(){let v=100;$('nz').value=100;const t=setInterval(()=>{v-=2;if(v<=0){v=0;clearInterval(t)}$('nz').value=v;drawNoise(v)},40)}
+
+/* ---------- prompt lab ---------- */
+const PL={subject:[['🐉','dragon'],['🐱','cat'],['🚀','rocket']],style:[['neon','neon cyberpunk'],['water','watercolor'],['pixel','pixel art']],mood:[['epic','epic'],['cozy','cozy']]};
+const sel={subject:0,style:0,mood:0};
+const SBG={neon:'linear-gradient(135deg,#12003a,#ff2d95)',water:'linear-gradient(135deg,#ffd6e8,#bfe9ff)',pixel:'linear-gradient(135deg,#1a7f37,#b6ff00)'};
+function drawPL(){
+  const s=PL.subject[sel.subject],st=PL.style[sel.style],m=PL.mood[sel.mood];
+  const r=$('res');r.style.background=SBG[st[0]];
+  r.style.filter=st[0]==='pixel'?'contrast(1.3) saturate(1.4)':st[0]==='water'?'saturate(.8)':'saturate(1.5)';
+  const ex=m[0]==='epic'?['⚡','🔥','🌋']:['☕','🕯️','🧣'];
+  r.innerHTML=`<span style="${st[0]==='neon'?'filter:drop-shadow(0 0 16px #00e5ff)':st[0]==='water'?'filter:blur(1.2px)':'text-shadow:6px 6px 0 #0006'}">${s[0]}</span>`+ex.map((e,i)=>`<span class="ex" style="left:${10+i*38}%;top:${i%2?62:8}%;animation-delay:-${i}s">${e}</span>`).join('');
+  $('pr').textContent=`"A ${m[1]} ${s[1]}, ${st[1]} style"`;
+  [...$('pl').querySelectorAll('.chip')].forEach(c=>c.classList.toggle('sel',sel[c.dataset.k]==c.dataset.i));
+}
+Object.keys(PL).forEach(k=>PL[k].forEach((o,i)=>{const b=document.createElement('button');b.className='chip';b.dataset.k=k;b.dataset.i=i;b.textContent=(k==='subject'?o[0]+' ':'')+o[1];b.onclick=()=>{sel[k]=i;drawPL()};$('pl').appendChild(b)}));
+drawPL();
+
+/* ---------- hallucination hunter ---------- */
+const CL=[['The Great Pyramid stands on the Giza plateau near Cairo.',0],['It was built around 4,500 years ago.',0],['It was built for the pharaoh Khufu.',0],['It was designed by the Roman engineer Marcus Aurelius in 120 AD.',1]];
+CL.forEach(c=>{const b=document.createElement('button');b.className='claim';b.textContent=c[0];b.onclick=()=>{
+  if(c[1]){b.classList.add('ok');$('hmsg').innerHTML='🎯 Caught it! The Romans came thousands of years later. AI can state falsehoods in the same confident tone as facts, because it predicts plausible words, not truth. Always verify.';confetti(60)}
+  else{b.classList.add('bad');$('hmsg').textContent='That one is actually true. Keep hunting! 🔍'}};$('cl').appendChild(b)});
+
+/* ---------- sorting game ---------- */
+const SI=[['Summarizing a long article',1,'Great at compressing text.'],['Doing long exact math with no tools',0,'It predicts digits and can slip. Calculators win here.'],['Writing a first draft of an email',1,'Fast and flexible. You polish it.'],['Knowing today\'s news with no web access',0,'Its knowledge stops at its training date.'],['Translating between languages',1,'Excellent at patterns across languages.'],['Knowing when it is wrong',0,'It can sound sure even when it is not.']];
+let sx=0,ss=0;
+function drawSort(){if(sx>=SI.length){$('sc').innerHTML=`🏆 Score: ${ss}/${SI.length}`;$('sm').innerHTML='Use AI for drafts, ideas and summaries, and double-check facts and numbers. <button class="chip" onclick="sx=0;ss=0;drawSort()">↺ Replay</button>';return}$('sc').textContent=SI[sx][0];$('sm').textContent=''}
+function sortA(g){if(sx>=SI.length)return;const it=SI[sx],ok=(!!it[1]===g);if(ok)ss++;$('sm').innerHTML=(ok?'✅ ':'❌ ')+it[2];sx++;setTimeout(drawSort,1500)}
+drawSort();
+
+/* ---------- bias bars ---------- */
+const BC=['#ff2d95','#00e5ff','#b6ff00','#ffb800','#8a5cff'];
+function drawBars(){const v=+$('bv').value,sk=1-v/100,w=BC.map((c,i)=>i===0?1+5*sk:1),tot=w.reduce((a,b)=>a+b);
+  $('bars').innerHTML=w.map((x,i)=>`<div style="height:${Math.max(30,x/tot*420)}px;background:${BC[i]}"></div>`).join('');
+  $('bm').textContent=v<35?'Narrow data → the model repeats one viewpoint and misses the others.':v<75?'Getting better. More variety means fairer, more useful answers.':'Rich, varied data → a more balanced model.'}
+$('bv').addEventListener('input',drawBars);drawBars();
+
+/* ---------- future cards ---------- */
+[['🧑‍🏫','Personal tutor','An AI that explains anything at your pace, in your language.'],['🛠️','AI agents','Assistants that plan and do multi-step tasks for you.'],['🎨','Creative copilot','Humans set the vision, AI helps with the heavy lifting.'],['🛡️','Guardrails','Rules, transparency and human checks so it stays useful and safe.']].forEach(f=>{const d=document.createElement('div');d.className='fc';d.innerHTML=`<div class="f"><b>${f[0]}</b>${f[1]}</div><div class="k">${f[2]}</div>`;d.onclick=()=>d.classList.toggle('flip');$('fu').appendChild(d)});
+
+/* ---------- confetti ---------- */
+let bits=[],cfOn=false;
+function confetti(n=160){for(let i=0;i<n;i++)bits.push({x:Math.random()*W,y:-20-Math.random()*H*.4,vx:Math.random()*4-2,vy:2+Math.random()*4,s:5+Math.random()*7,c:BC[i%5],r:Math.random()*6});if(!cfOn){cfOn=true;loopC()}}
+function loopC(){cx.clearRect(0,0,W,H);bits=bits.filter(b=>b.y<H+20);bits.forEach(b=>{b.x+=b.vx;b.y+=b.vy;b.r+=.15;cx.save();cx.translate(b.x,b.y);cx.rotate(b.r);cx.fillStyle=b.c;cx.fillRect(-b.s/2,-b.s/2,b.s,b.s*.6);cx.restore()});if(bits.length)requestAnimationFrame(loopC);else cfOn=false}
+
+go(0);
+</script>
+</body>
+</html>
